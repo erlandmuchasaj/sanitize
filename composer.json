@@ -1,0 +1,55 @@
+{
+    "name": "erlandmuchasaj/sanitize",
+    "type": "library",
+    "description": "A package to sanitize your input.",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "license": "MIT",
+    "keywords": [
+        "input",
+        "clean",
+        "sanitize",
+        "escape",
+        "library",
+        "pacage"
+    ],
+    "autoload": {
+        "psr-4": {
+            "ErlandMuchasaj\\Sanitize\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Erland Muchasaj",
+            "email": "erland.muchasaj@gmail.com",
+            "homepage": "https://erlandmuchasaj.tech/",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "erland.muchasaj@gmail.com",
+        "irc": "irc://irc.freenode.org/composer"
+    },
+    "funding": [
+        {
+            "type": "patreon",
+            "url": "https://www.patreon.com/erlandmuchasaj"
+        },
+        {
+            "type": "Ko-fi",
+            "url": "https://ko-fi.com/erlandmuchasaj"
+        },
+        {
+            "type": "PayPal",
+            "url": "https://paypal.me/emcms?country.x=AL&locale.x=en_US"
+        }
+    ],
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    },
+    "require": {
+        "php": "^7.3|^7.4|^8.0|^8.1|^8.2"
+    }
+}
