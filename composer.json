@@ -5,6 +5,7 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "license": "MIT",
+    "version": "1.0.0",
     "keywords": [
         "input",
         "clean",
