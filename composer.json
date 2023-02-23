@@ -4,6 +4,7 @@
     "description": "A package to sanitize your input.",
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "homepage": "https://github.com/erlandmuchasaj/sanitize",
     "license": "MIT",
     "version": "1.0.0",
     "keywords": [
@@ -12,7 +13,7 @@
         "sanitize",
         "escape",
         "library",
-        "pacage"
+        "package"
     ],
     "autoload": {
         "psr-4": {
@@ -28,6 +29,8 @@
         }
     ],
     "support": {
+        "issues": "https://github.com/erlandmuchasaj/sanitize/issues",
+        "source": "https://github.com/erlandmuchasaj/sanitize",
         "email": "erland.muchasaj@gmail.com",
         "irc": "irc://irc.freenode.org/composer"
     },
