@@ -74,9 +74,6 @@ final class Sanitize
 
     /**
      * Replace all accented chars by their equivalent non-accented chars.
-     *
-     * @param  string  $str
-     * @return string
      */
     private static function replaceAccentedChars(string $str): string
     {
@@ -208,10 +205,6 @@ final class Sanitize
         return self::replaceAccentedChars(trim($string));
     }
 
-    /**
-     * @param  string  $str
-     * @return string
-     */
     private static function lowercase(string $str): string
     {
         if (function_exists('mb_strtolower')) {
