@@ -46,9 +46,7 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
-If you discover a security vulnerability within this package,
-please send an e-mail to Erland Muchasaj via [erland.muchasaj@gmail.com](mailto:erland.muchasaj@gmail.com).
-All security vulnerabilities will be promptly addressed.
+Please see [SECURITY](SECURITY.md) for details.
 
 ## Credits
 
