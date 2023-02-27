@@ -1,7 +1,5 @@
 # PHP sanitize
 
----
-
 This is a PHP package that helps to sanatize your input when performing search queries to DB.
 It cleans the input from all malicious characters.
 
@@ -30,11 +28,17 @@ $sanitizedString = Sanitize::sanitize($dirtyString);
 
 ```
 
-## Support me
-I invest a lot of time and resources into creating [best in class open source packages](https://github.com/erlandmuchasaj?tab=repositories). 
-You can support me by [buying me a coffee](https://paypal.me/emcms?country.x=AL&locale.x=en_US).
-
 ---
+
+## Support me
+
+I invest a lot of time and resources into creating [best in class open source packages](https://github.com/erlandmuchasaj?tab=repositories).
+
+If you found this package helpful you can show support by clicking on the following button below and donating some amount to help me work on these projects frequently.
+
+<a href="https://www.buymeacoffee.com/erland" target="_blank">
+    <img src="https://www.buymeacoffee.com/assets/img/guidelines/download-assets-2.svg" style="height: 45px; border-radius: 12px" alt="buy me a coffee"/>
+</a>
 
 ## Changelog
 
