@@ -7,13 +7,6 @@ namespace ErlandMuchasaj\Sanitize;
  */
 final class Sanitize
 {
-    /*
-     * Matches all CJK characters that are candidates for auto-splitting
-     * (Chinese, Japanese, Korean).
-     * Contains kana and BMP ideographs.
-     */
-    private const PREG_CLASS_CJK = '\x{3041}-\x{30ff}\x{31f0}-\x{31ff}\x{3400}-\x{4db5}\x{4e00}-\x{9fbb}\x{f900}-\x{fad9}';
-
     /**
      * Copied from Drupal search module, except for \x{0}-\x{2f}
      * that has been replaced by \x{0}-\x{2c}\x{2e}-\x{2f} in order to keep the char '-'

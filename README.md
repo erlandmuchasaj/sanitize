@@ -1,6 +1,6 @@
 # PHP sanitize
 
-This is a PHP package that helps to sanatize your input when performing search queries to DB.
+This is a PHP package that helps to sanitize your input when performing search queries to DB.
 It cleans the input from all malicious characters.
 
 ## Installation
