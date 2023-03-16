@@ -190,7 +190,8 @@ final class Sanitize
 
         $string = str_replace(['.', '_'], '', $string);
         if (! $keepHyphens) {
-            $string = ltrim(preg_replace('/([^ ])-/', '$1 ', ' '.$string));
+            $string = (string) preg_replace('/([^ ])-/', '$1 ', ' '.$string);
+            $string = ltrim($string);
         }
 
         $string = (string) preg_replace('/\s+/', ' ', $string);
