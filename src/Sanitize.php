@@ -186,9 +186,10 @@ final class Sanitize
          */
         if (! $keepEmails) {
             $string = (string) preg_replace('/['.self::PREG_CLASS_SEARCH_EXCLUDE.']+/u', ' ', $string);
+
+            $string = str_replace(['.', '_'], '', $string);
         }
 
-        $string = str_replace(['.', '_'], '', $string);
         if (! $keepHyphens) {
             $string = (string) preg_replace('/([^ ])-/', '$1 ', ' '.$string);
             $string = ltrim($string);
