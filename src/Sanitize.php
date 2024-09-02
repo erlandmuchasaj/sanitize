@@ -171,11 +171,18 @@ final class Sanitize
     public static function sanitize(string $string = '', bool $keepHyphens = false, bool $keepEmails = false): string
     {
         $string = trim($string);
-        if (empty($string)) {
+
+        //remove html
+        $string = strip_tags($string);
+
+        //replace multiple spaces
+        $string = (string) preg_replace("#\s+#", ' ', $string);
+
+        if (strlen($string) == 0) {
             return '';
         }
 
-        $string = self::lowercase(strip_tags($string));
+        $string = self::lowercase($string);
 
         $string = html_entity_decode($string, ENT_NOQUOTES, 'utf-8');
 
