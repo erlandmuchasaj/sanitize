@@ -1,41 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ErlandMuchasaj\Sanitize;
 
+use Transliterator;
+
 /**
- * Sanitize input to be used in search queries
+ * Sanitize input strings for use in search queries.
+ * 
+ * Handles HTML stripping, whitespace normalization, accent removal,
+ * and character filtering with options for email and hyphen preservation.
  */
 final class Sanitize
 {
     /**
-     * Copied from Drupal search module, except for \x{0}-\x{2f}
-     * that has been replaced by \x{0}-\x{2c}\x{2e}-\x{2f} in order to keep the char '-'
+     * Unicode punctuation character class (derived from Drupal search module).
+     * Modified to preserve hyphen character.
      */
     private const PREG_CLASS_PUNCTUATION = '\x{21}-\x{23}\x{25}-\x{2a}\x{2c}-\x{2f}\x{3a}\x{3b}\x{3f}\x{40}\x{5b}-\x{5d}'.
-    '\x{5f}\x{7b}\x{7d}\x{a1}\x{ab}\x{b7}\x{bb}\x{bf}\x{37e}\x{387}\x{55a}-\x{55f}'.
-    '\x{589}\x{58a}\x{5be}\x{5c0}\x{5c3}\x{5f3}\x{5f4}\x{60c}\x{60d}\x{61b}\x{61f}'.
-    '\x{66a}-\x{66d}\x{6d4}\x{700}-\x{70d}\x{964}\x{965}\x{970}\x{df4}\x{e4f}'.
-    '\x{e5a}\x{e5b}\x{f04}-\x{f12}\x{f3a}-\x{f3d}\x{f85}\x{104a}-\x{104f}\x{10fb}'.
-    '\x{1361}-\x{1368}\x{166d}\x{166e}\x{169b}\x{169c}\x{16eb}-\x{16ed}\x{1735}'.
-    '\x{1736}\x{17d4}-\x{17d6}\x{17d8}-\x{17da}\x{1800}-\x{180a}\x{1944}\x{1945}'.
-    '\x{2010}-\x{2027}\x{2030}-\x{2043}\x{2045}-\x{2051}\x{2053}\x{2054}\x{2057}'.
-    '\x{207d}\x{207e}\x{208d}\x{208e}\x{2329}\x{232a}\x{23b4}-\x{23b6}\x{2768}-'.
-    '\x{2775}\x{27e6}-\x{27eb}\x{2983}-\x{2998}\x{29d8}-\x{29db}\x{29fc}\x{29fd}'.
-    '\x{3001}-\x{3003}\x{3008}-\x{3011}\x{3014}-\x{301f}\x{3030}\x{303d}\x{30a0}'.
-    '\x{30fb}\x{fd3e}\x{fd3f}\x{fe30}-\x{fe52}\x{fe54}-\x{fe61}\x{fe63}\x{fe68}'.
-    '\x{fe6a}\x{fe6b}\x{ff01}-\x{ff03}\x{ff05}-\x{ff0a}\x{ff0c}-\x{ff0f}\x{ff1a}'.
-    '\x{ff1b}\x{ff1f}\x{ff20}\x{ff3b}-\x{ff3d}\x{ff3f}\x{ff5b}\x{ff5d}\x{ff5f}-'.
-    '\x{ff65}';
+        '\x{5f}\x{7b}\x{7d}\x{a1}\x{ab}\x{b7}\x{bb}\x{bf}\x{37e}\x{387}\x{55a}-\x{55f}'.
+        '\x{589}\x{58a}\x{5be}\x{5c0}\x{5c3}\x{5f3}\x{5f4}\x{60c}\x{60d}\x{61b}\x{61f}'.
+        '\x{66a}-\x{66d}\x{6d4}\x{700}-\x{70d}\x{964}\x{965}\x{970}\x{df4}\x{e4f}'.
+        '\x{e5a}\x{e5b}\x{f04}-\x{f12}\x{f3a}-\x{f3d}\x{f85}\x{104a}-\x{104f}\x{10fb}'.
+        '\x{1361}-\x{1368}\x{166d}\x{166e}\x{169b}\x{169c}\x{16eb}-\x{16ed}\x{1735}'.
+        '\x{1736}\x{17d4}-\x{17d6}\x{17d8}-\x{17da}\x{1800}-\x{180a}\x{1944}\x{1945}'.
+        '\x{2010}-\x{2027}\x{2030}-\x{2043}\x{2045}-\x{2051}\x{2053}\x{2054}\x{2057}'.
+        '\x{207d}\x{207e}\x{208d}\x{208e}\x{2329}\x{232a}\x{23b4}-\x{23b6}\x{2768}-'.
+        '\x{2775}\x{27e6}-\x{27eb}\x{2983}-\x{2998}\x{29d8}-\x{29db}\x{29fc}\x{29fd}'.
+        '\x{3001}-\x{3003}\x{3008}-\x{3011}\x{3014}-\x{301f}\x{3030}\x{303d}\x{30a0}'.
+        '\x{30fb}\x{fd3e}\x{fd3f}\x{fe30}-\x{fe52}\x{fe54}-\x{fe61}\x{fe63}\x{fe68}'.
+        '\x{fe6a}\x{fe6b}\x{ff01}-\x{ff03}\x{ff05}-\x{ff0a}\x{ff0c}-\x{ff0f}\x{ff1a}'.
+        '\x{ff1b}\x{ff1f}\x{ff20}\x{ff3b}-\x{ff3d}\x{ff3f}\x{ff5b}\x{ff5d}\x{ff5f}-'.
+        '\x{ff65}';
 
     private const PREG_CLASS_NUMBERS = '\x{30}-\x{39}\x{b2}\x{b3}\x{b9}\x{bc}-\x{be}\x{660}-\x{669}\x{6f0}-\x{6f9}'.
-    '\x{966}-\x{96f}\x{9e6}-\x{9ef}\x{9f4}-\x{9f9}\x{a66}-\x{a6f}\x{ae6}-\x{aef}'.
-    '\x{b66}-\x{b6f}\x{be7}-\x{bf2}\x{c66}-\x{c6f}\x{ce6}-\x{cef}\x{d66}-\x{d6f}'.
-    '\x{e50}-\x{e59}\x{ed0}-\x{ed9}\x{f20}-\x{f33}\x{1040}-\x{1049}\x{1369}-'.
-    '\x{137c}\x{16ee}-\x{16f0}\x{17e0}-\x{17e9}\x{17f0}-\x{17f9}\x{1810}-\x{1819}'.
-    '\x{1946}-\x{194f}\x{2070}\x{2074}-\x{2079}\x{2080}-\x{2089}\x{2153}-\x{2183}'.
-    '\x{2460}-\x{249b}\x{24ea}-\x{24ff}\x{2776}-\x{2793}\x{3007}\x{3021}-\x{3029}'.
-    '\x{3038}-\x{303a}\x{3192}-\x{3195}\x{3220}-\x{3229}\x{3251}-\x{325f}\x{3280}-'.
-    '\x{3289}\x{32b1}-\x{32bf}\x{ff10}-\x{ff19}';
+        '\x{966}-\x{96f}\x{9e6}-\x{9ef}\x{9f4}-\x{9f9}\x{a66}-\x{a6f}\x{ae6}-\x{aef}'.
+        '\x{b66}-\x{b6f}\x{be7}-\x{bf2}\x{c66}-\x{c6f}\x{ce6}-\x{cef}\x{d66}-\x{d6f}'.
+        '\x{e50}-\x{e59}\x{ed0}-\x{ed9}\x{f20}-\x{f33}\x{1040}-\x{1049}\x{1369}-'.
+        '\x{137c}\x{16ee}-\x{16f0}\x{17e0}-\x{17e9}\x{17f0}-\x{17f9}\x{1810}-\x{1819}'.
+        '\x{1946}-\x{194f}\x{2070}\x{2074}-\x{2079}\x{2080}-\x{2089}\x{2153}-\x{2183}'.
+        '\x{2460}-\x{249b}\x{24ea}-\x{24ff}\x{2776}-\x{2793}\x{3007}\x{3021}-\x{3029}'.
+        '\x{3038}-\x{303a}\x{3192}-\x{3195}\x{3220}-\x{3229}\x{3251}-\x{325f}\x{3280}-'.
+        '\x{3289}\x{32b1}-\x{32bf}\x{ff10}-\x{ff19}';
 
     private const PREG_CLASS_SEARCH_EXCLUDE = '\x{0}-\x{2c}\x{2e}-\x{2f}\x{3a}-\x{40}\x{5b}-\x{60}\x{7b}-\x{bf}\x{d7}\x{f7}\x{2b0}-'.
         '\x{385}\x{387}\x{3f6}\x{482}-\x{489}\x{559}-\x{55f}\x{589}-\x{5c7}\x{5f3}-'.
@@ -66,153 +73,301 @@ final class Sanitize
         '\x{ff5b}-\x{ff65}\x{ff70}\x{ff9e}\x{ff9f}\x{ffe0}-\x{fffd}';
 
     /**
-     * Replace all accented chars by their equivalent non-accented chars.
+     * Cached Transliterator instance for performance.
      */
-    private static function replaceAccentedChars(string $str): string
+    private static ?Transliterator $transliterator = null;
+
+    /**
+     * Prevent instantiation - this is a static utility class.
+     */
+    private function __construct()
     {
-        /* One source among others:
-            http://www.tachyonsoft.com/uc0000.htm
-            http://www.tachyonsoft.com/uc0001.htm
-            http://www.tachyonsoft.com/uc0004.htm
-        */
-        $patterns = [
-            /* Lowercase */
-            /* a  */ '/[\x{00E0}\x{00E1}\x{00E2}\x{00E3}\x{00E4}\x{00E5}\x{0101}\x{0103}\x{0105}\x{0430}\x{00C0}-\x{00C3}\x{1EA0}-\x{1EB7}]/u',
-            /* b  */ '/[\x{0431}]/u',
-            /* c  */ '/[\x{00E7}\x{0107}\x{0109}\x{010D}\x{0446}]/u',
-            /* d  */ '/[\x{010F}\x{0111}\x{0434}\x{0110}]/u',
-            /* e  */ '/[\x{00E8}\x{00E9}\x{00EA}\x{00EB}\x{0113}\x{0115}\x{0117}\x{0119}\x{011B}\x{0435}\x{044D}\x{00C8}-\x{00CA}\x{1EB8}-\x{1EC7}]/u',
-            /* f  */ '/[\x{0444}]/u',
-            /* g  */ '/[\x{011F}\x{0121}\x{0123}\x{0433}\x{0491}]/u',
-            /* h  */ '/[\x{0125}\x{0127}]/u',
-            /* i  */ '/[\x{00EC}\x{00ED}\x{00EE}\x{00EF}\x{0129}\x{012B}\x{012D}\x{012F}\x{0131}\x{0438}\x{0456}\x{00CC}\x{00CD}\x{1EC8}-\x{1ECB}\x{0128}]/u',
-            /* j  */ '/[\x{0135}\x{0439}]/u',
-            /* k  */ '/[\x{0137}\x{0138}\x{043A}]/u',
-            /* l  */ '/[\x{013A}\x{013C}\x{013E}\x{0140}\x{0142}\x{043B}]/u',
-            /* m  */ '/[\x{043C}]/u',
-            /* n  */ '/[\x{00F1}\x{0144}\x{0146}\x{0148}\x{0149}\x{014B}\x{043D}]/u',
-            /* o  */ '/[\x{00F2}\x{00F3}\x{00F4}\x{00F5}\x{00F6}\x{00F8}\x{014D}\x{014F}\x{0151}\x{043E}\x{00D2}-\x{00D5}\x{01A0}\x{01A1}\x{1ECC}-\x{1EE3}]/u',
-            /* p  */ '/[\x{043F}]/u',
-            /* r  */ '/[\x{0155}\x{0157}\x{0159}\x{0440}]/u',
-            /* s  */ '/[\x{015B}\x{015D}\x{015F}\x{0161}\x{0441}]/u',
-            /* ss */ '/[\x{00DF}]/u',
-            /* t  */ '/[\x{0163}\x{0165}\x{0167}\x{0442}]/u',
-            /* u  */ '/[\x{00F9}\x{00FA}\x{00FB}\x{00FC}\x{0169}\x{016B}\x{016D}\x{016F}\x{0171}\x{0173}\x{0443}\x{00D9}-\x{00DA}\x{0168}\x{01AF}\x{01B0}\x{1EE4}-\x{1EF1}]/u',
-            /* v  */ '/[\x{0432}]/u',
-            /* w  */ '/[\x{0175}]/u',
-            /* y  */ '/[\x{00FF}\x{0177}\x{00FD}\x{044B}\x{1EF2}-\x{1EF9}\x{00DD}]/u',
-            /* z  */ '/[\x{017A}\x{017C}\x{017E}\x{0437}]/u',
-            /* ae */ '/[\x{00E6}]/u',
-            /* ch */ '/[\x{0447}]/u',
-            /* kh */ '/[\x{0445}]/u',
-            /* oe */ '/[\x{0153}]/u',
-            /* sh */ '/[\x{0448}]/u',
-            /* shh*/ '/[\x{0449}]/u',
-            /* ya */ '/[\x{044F}]/u',
-            /* ye */ '/[\x{0454}]/u',
-            /* yi */ '/[\x{0457}]/u',
-            /* yo */ '/[\x{0451}]/u',
-            /* yu */ '/[\x{044E}]/u',
-            /* zh */ '/[\x{0436}]/u',
-
-            /* Uppercase */
-            /* A  */ '/[\x{0100}\x{0102}\x{0104}\x{00C0}\x{00C1}\x{00C2}\x{00C3}\x{00C4}\x{00C5}\x{0410}]/u',
-            /* B  */ '/[\x{0411}]/u',
-            /* C  */ '/[\x{00C7}\x{0106}\x{0108}\x{010A}\x{010C}\x{0426}]/u',
-            /* D  */ '/[\x{010E}\x{0110}\x{0414}]/u',
-            /* E  */ '/[\x{00C8}\x{00C9}\x{00CA}\x{00CB}\x{0112}\x{0114}\x{0116}\x{0118}\x{011A}\x{0415}\x{042D}]/u',
-            /* F  */ '/[\x{0424}]/u',
-            /* G  */ '/[\x{011C}\x{011E}\x{0120}\x{0122}\x{0413}\x{0490}]/u',
-            /* H  */ '/[\x{0124}\x{0126}]/u',
-            /* I  */ '/[\x{0128}\x{012A}\x{012C}\x{012E}\x{0130}\x{0418}\x{0406}]/u',
-            /* J  */ '/[\x{0134}\x{0419}]/u',
-            /* K  */ '/[\x{0136}\x{041A}]/u',
-            /* L  */ '/[\x{0139}\x{013B}\x{013D}\x{0139}\x{0141}\x{041B}]/u',
-            /* M  */ '/[\x{041C}]/u',
-            /* N  */ '/[\x{00D1}\x{0143}\x{0145}\x{0147}\x{014A}\x{041D}]/u',
-            /* O  */ '/[\x{00D3}\x{014C}\x{014E}\x{0150}\x{041E}]/u',
-            /* P  */ '/[\x{041F}]/u',
-            /* R  */ '/[\x{0154}\x{0156}\x{0158}\x{0420}]/u',
-            /* S  */ '/[\x{015A}\x{015C}\x{015E}\x{0160}\x{0421}]/u',
-            /* T  */ '/[\x{0162}\x{0164}\x{0166}\x{0422}]/u',
-            /* U  */ '/[\x{00D9}\x{00DA}\x{00DB}\x{00DC}\x{0168}\x{016A}\x{016C}\x{016E}\x{0170}\x{0172}\x{0423}]/u',
-            /* V  */ '/[\x{0412}]/u',
-            /* W  */ '/[\x{0174}]/u',
-            /* Y  */ '/[\x{0176}\x{042B}]/u',
-            /* Z  */ '/[\x{0179}\x{017B}\x{017D}\x{0417}]/u',
-            /* AE */ '/[\x{00C6}]/u',
-            /* CH */ '/[\x{0427}]/u',
-            /* KH */ '/[\x{0425}]/u',
-            /* OE */ '/[\x{0152}]/u',
-            /* SH */ '/[\x{0428}]/u',
-            /* SHH*/ '/[\x{0429}]/u',
-            /* YA */ '/[\x{042F}]/u',
-            /* YE */ '/[\x{0404}]/u',
-            /* YI */ '/[\x{0407}]/u',
-            /* YO */ '/[\x{0401}]/u',
-            /* YU */ '/[\x{042E}]/u',
-            /* ZH */ '/[\x{0416}]/u', ];
-
-        // ö to oe
-        // å to aa
-        // ä to ae
-
-        $replacements = [
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 'ss', 't', 'u', 'v', 'w', 'y', 'z', 'ae', 'ch', 'kh', 'oe', 'sh', 'shh', 'ya', 'ye', 'yi', 'yo', 'yu', 'zh',
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z', 'AE', 'CH', 'KH', 'OE', 'SH', 'SHH', 'YA', 'YE', 'YI', 'YO', 'YU', 'ZH',
-        ];
-
-        return (string) preg_replace($patterns, $replacements, $str);
     }
 
     /**
-     * Sanitize a string for search
+     * Sanitize a string for use in search queries.
+     *
+     * @param string $string      The input string to sanitize
+     * @param bool   $keepHyphens Whether to preserve hyphens (default: false)
+     * @param bool   $keepEmails  Whether to preserve email format (default: false)
      */
-    public static function sanitize(string $string = '', bool $keepHyphens = false, bool $keepEmails = false): string
-    {
+    public static function sanitize(
+        string $string = '',
+        bool $keepHyphens = false,
+        bool $keepEmails = false
+    ): string {
         $string = trim($string);
 
-        //remove html
-        $string = strip_tags($string);
-
-        //replace multiple spaces
-        $string = (string) preg_replace("#\s+#", ' ', $string);
-
-        if (strlen($string) == 0) {
+        if ($string === '') {
             return '';
         }
 
-        $string = self::lowercase($string);
+        // Ensure valid UTF-8 encoding
+        $string = self::ensureUtf8($string);
 
-        $string = html_entity_decode($string, ENT_NOQUOTES, 'utf-8');
+        // Remove HTML tags
+        $string = strip_tags($string);
 
-        $string = (string) preg_replace('/(['.self::PREG_CLASS_NUMBERS.']+)['.self::PREG_CLASS_PUNCTUATION.']+(?=['.self::PREG_CLASS_NUMBERS.'])/u', '\1', $string);
+        // Decode HTML entities
+        $string = html_entity_decode($string, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        /**
-         * This caused the email to change from [email@me.com] => [email me com]
-         */
-        if (! $keepEmails) {
-            $string = (string) preg_replace('/['.self::PREG_CLASS_SEARCH_EXCLUDE.']+/u', ' ', $string);
+        // Transliterate accented characters to ASCII equivalents
+        $string = self::transliterate($string);
 
-            $string = str_replace(['.', '_'], '', $string);
+        // Convert to lowercase
+        $string = mb_strtolower($string, 'UTF-8');
+
+        // Remove punctuation between numbers (e.g., "1,000" → "1000", "1.5" → "15")
+        $string = self::removePunctuationBetweenNumbers($string);
+
+        // Handle special characters based on email preservation setting
+        if (!$keepEmails) {
+            $string = self::removeSearchExcludedCharacters($string);
+            // Replace dots and underscores with spaces (not remove!)
+            $string = str_replace(['.', '_'], ' ', $string);
         }
 
-        if (! $keepHyphens) {
-            $string = (string) preg_replace('/([^ ])-/', '$1 ', ' '.$string);
-            $string = ltrim($string);
+        // Handle hyphens
+        if (!$keepHyphens) {
+            $string = self::normalizeHyphens($string);
         }
 
-        $string = (string) preg_replace('/\s+/', ' ', $string);
+        // Normalize whitespace to single spaces
+        $string = self::normalizeWhitespace($string);
 
-        return self::replaceAccentedChars(trim($string));
+        return trim($string);
     }
 
-    private static function lowercase(string $str): string
+    /**
+     * Transliterate accented/special characters to ASCII equivalents.
+     * 
+     * Uses ICU Transliterator (preferred), falls back to iconv, then manual replacement.
+     */
+    public static function transliterate(string $string): string
     {
-        if (function_exists('mb_strtolower')) {
-            return mb_strtolower($str, 'utf-8');
+        // Try ICU Transliterator first (most comprehensive)
+        if (class_exists(Transliterator::class)) {
+            $transliterator = self::getTransliterator();
+
+            if ($transliterator !== null) {
+                $result = $transliterator->transliterate($string);
+
+                if ($result !== false) {
+                    return $result;
+                }
+            }
         }
 
-        return strtolower($str);
+        // Fallback to iconv transliteration
+        if (function_exists('iconv')) {
+            // Set locale for better transliteration
+            $currentLocale = setlocale(LC_CTYPE, '0');
+            setlocale(LC_CTYPE, 'en_US.UTF-8', 'C.UTF-8');
+
+            $result = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
+
+            // Restore locale
+            if ($currentLocale !== false) {
+                setlocale(LC_CTYPE, $currentLocale);
+            }
+
+            if ($result !== false) {
+                return $result;
+            }
+        }
+
+        // Final fallback to manual character replacement
+        return self::replaceAccentedChars($string);
+    }
+
+    /**
+     * Check if the intl extension with Transliterator is available.
+     */
+    public static function hasIntlSupport(): bool
+    {
+        return class_exists(Transliterator::class) && self::getTransliterator() !== null;
+    }
+
+    /**
+     * Ensure string is valid UTF-8.
+     */
+    private static function ensureUtf8(string $string): string
+    {
+        if (!mb_check_encoding($string, 'UTF-8')) {
+            // Attempt to convert from detected encoding or strip invalid sequences
+            $encoding = mb_detect_encoding($string, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true);
+
+            if ($encoding !== false && $encoding !== 'UTF-8') {
+                return mb_convert_encoding($string, 'UTF-8', $encoding);
+            }
+
+            // Strip invalid UTF-8 sequences
+            return mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+        }
+
+        return $string;
+    }
+
+    /**
+     * Get or create cached Transliterator instance.
+     */
+    private static function getTransliterator(): ?Transliterator
+    {
+        if (self::$transliterator === null) {
+            // NFD: Decompose characters (é → e + combining accent)
+            // Remove combining marks (accents)
+            // NFC: Recompose
+            // Latin-ASCII: Convert remaining to ASCII
+            self::$transliterator = Transliterator::createFromRules(
+                ':: NFD; :: [:Nonspacing Mark:] Remove; :: NFC; :: Latin-ASCII;',
+                Transliterator::FORWARD
+            );
+        }
+
+        return self::$transliterator;
+    }
+
+    /**
+     * Remove punctuation between consecutive number sequences.
+     */
+    private static function removePunctuationBetweenNumbers(string $string): string
+    {
+        $pattern = '/([' . self::PREG_CLASS_NUMBERS . ']+)[' . self::PREG_CLASS_PUNCTUATION . ']+(?=[' . self::PREG_CLASS_NUMBERS . '])/u';
+
+        return (string) preg_replace($pattern, '$1', $string);
+    }
+
+    /**
+     * Remove characters that should be excluded from search.
+     */
+    private static function removeSearchExcludedCharacters(string $string): string
+    {
+        $pattern = '/[' . self::PREG_CLASS_SEARCH_EXCLUDE . ']+/u';
+
+        return (string) preg_replace($pattern, ' ', $string);
+    }
+
+    /**
+     * Normalize hyphens - replace with spaces except at word boundaries.
+     */
+    private static function normalizeHyphens(string $string): string
+    {
+        // Replace all hyphens/dashes with spaces
+        return (string) preg_replace('/[\x{2010}-\x{2015}\-]+/u', ' ', $string);
+    }
+
+    /**
+     * Normalize multiple whitespace characters to single space.
+     */
+    private static function normalizeWhitespace(string $string): string
+    {
+        return (string) preg_replace('/\s+/', ' ', $string);
+    }
+
+    /**
+     * Manual fallback for replacing accented characters.
+     * Used when neither Transliterator nor iconv are available.
+     */
+    private static function replaceAccentedChars(string $str): string
+    {
+        static $map = null;
+
+        if ($map === null) {
+            $map = self::buildAccentMap();
+        }
+
+        return strtr($str, $map);
+    }
+
+    /**
+     * Build character replacement map for manual transliteration.
+     * Using strtr with a map is faster than multiple preg_replace calls.
+     */
+    private static function buildAccentMap(): array
+    {
+        return [
+            // Lowercase Latin
+            'à' => 'a', 'á' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'å' => 'a',
+            'ā' => 'a', 'ă' => 'a', 'ą' => 'a', 'æ' => 'ae',
+            'ç' => 'c', 'ć' => 'c', 'ĉ' => 'c', 'č' => 'c',
+            'ď' => 'd', 'đ' => 'd',
+            'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e', 'ē' => 'e', 'ĕ' => 'e',
+            'ė' => 'e', 'ę' => 'e', 'ě' => 'e',
+            'ğ' => 'g', 'ĝ' => 'g', 'ġ' => 'g', 'ģ' => 'g',
+            'ĥ' => 'h', 'ħ' => 'h',
+            'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i', 'ĩ' => 'i', 'ī' => 'i',
+            'ĭ' => 'i', 'į' => 'i', 'ı' => 'i',
+            'ĵ' => 'j',
+            'ķ' => 'k', 'ĸ' => 'k',
+            'ĺ' => 'l', 'ļ' => 'l', 'ľ' => 'l', 'ŀ' => 'l', 'ł' => 'l',
+            'ñ' => 'n', 'ń' => 'n', 'ņ' => 'n', 'ň' => 'n', 'ŉ' => 'n', 'ŋ' => 'n',
+            'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o', 'ø' => 'o',
+            'ō' => 'o', 'ŏ' => 'o', 'ő' => 'o', 'œ' => 'oe',
+            'ŕ' => 'r', 'ŗ' => 'r', 'ř' => 'r',
+            'ś' => 's', 'ŝ' => 's', 'ş' => 's', 'š' => 's', 'ß' => 'ss',
+            'ţ' => 't', 'ť' => 't', 'ŧ' => 't',
+            'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u', 'ũ' => 'u', 'ū' => 'u',
+            'ŭ' => 'u', 'ů' => 'u', 'ű' => 'u', 'ų' => 'u',
+            'ŵ' => 'w',
+            'ý' => 'y', 'ÿ' => 'y', 'ŷ' => 'y',
+            'ź' => 'z', 'ż' => 'z', 'ž' => 'z',
+
+            // Uppercase Latin
+            'À' => 'A', 'Á' => 'A', 'Â' => 'A', 'Ã' => 'A', 'Ä' => 'A', 'Å' => 'A',
+            'Ā' => 'A', 'Ă' => 'A', 'Ą' => 'A', 'Æ' => 'AE',
+            'Ç' => 'C', 'Ć' => 'C', 'Ĉ' => 'C', 'Č' => 'C',
+            'Ď' => 'D', 'Đ' => 'D',
+            'È' => 'E', 'É' => 'E', 'Ê' => 'E', 'Ë' => 'E', 'Ē' => 'E', 'Ĕ' => 'E',
+            'Ė' => 'E', 'Ę' => 'E', 'Ě' => 'E',
+            'Ğ' => 'G', 'Ĝ' => 'G', 'Ġ' => 'G', 'Ģ' => 'G',
+            'Ĥ' => 'H', 'Ħ' => 'H',
+            'Ì' => 'I', 'Í' => 'I', 'Î' => 'I', 'Ï' => 'I', 'Ĩ' => 'I', 'Ī' => 'I',
+            'Ĭ' => 'I', 'Į' => 'I', 'İ' => 'I',
+            'Ĵ' => 'J',
+            'Ķ' => 'K',
+            'Ĺ' => 'L', 'Ļ' => 'L', 'Ľ' => 'L', 'Ŀ' => 'L', 'Ł' => 'L',
+            'Ñ' => 'N', 'Ń' => 'N', 'Ņ' => 'N', 'Ň' => 'N', 'Ŋ' => 'N',
+            'Ò' => 'O', 'Ó' => 'O', 'Ô' => 'O', 'Õ' => 'O', 'Ö' => 'O', 'Ø' => 'O',
+            'Ō' => 'O', 'Ŏ' => 'O', 'Ő' => 'O', 'Œ' => 'OE',
+            'Ŕ' => 'R', 'Ŗ' => 'R', 'Ř' => 'R',
+            'Ś' => 'S', 'Ŝ' => 'S', 'Ş' => 'S', 'Š' => 'S',
+            'Ţ' => 'T', 'Ť' => 'T', 'Ŧ' => 'T',
+            'Ù' => 'U', 'Ú' => 'U', 'Û' => 'U', 'Ü' => 'U', 'Ũ' => 'U', 'Ū' => 'U',
+            'Ŭ' => 'U', 'Ů' => 'U', 'Ű' => 'U', 'Ų' => 'U',
+            'Ŵ' => 'W',
+            'Ý' => 'Y', 'Ŷ' => 'Y', 'Ÿ' => 'Y',
+            'Ź' => 'Z', 'Ż' => 'Z', 'Ž' => 'Z',
+
+            // Cyrillic (Russian/Ukrainian)
+            'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e',
+            'ё' => 'yo', 'ж' => 'zh', 'з' => 'z', 'и' => 'i', 'й' => 'j', 'к' => 'k',
+            'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r',
+            'с' => 's', 'т' => 't', 'у' => 'u', 'ф' => 'f', 'х' => 'kh', 'ц' => 'c',
+            'ч' => 'ch', 'ш' => 'sh', 'щ' => 'shh', 'ъ' => '', 'ы' => 'y', 'ь' => '',
+            'э' => 'e', 'ю' => 'yu', 'я' => 'ya',
+            'і' => 'i', 'ї' => 'yi', 'є' => 'ye', 'ґ' => 'g',
+
+            'А' => 'A', 'Б' => 'B', 'В' => 'V', 'Г' => 'G', 'Д' => 'D', 'Е' => 'E',
+            'Ё' => 'YO', 'Ж' => 'ZH', 'З' => 'Z', 'И' => 'I', 'Й' => 'J', 'К' => 'K',
+            'Л' => 'L', 'М' => 'M', 'Н' => 'N', 'О' => 'O', 'П' => 'P', 'Р' => 'R',
+            'С' => 'S', 'Т' => 'T', 'У' => 'U', 'Ф' => 'F', 'Х' => 'KH', 'Ц' => 'C',
+            'Ч' => 'CH', 'Ш' => 'SH', 'Щ' => 'SHH', 'Ъ' => '', 'Ы' => 'Y', 'Ь' => '',
+            'Э' => 'E', 'Ю' => 'YU', 'Я' => 'YA',
+            'І' => 'I', 'Ї' => 'YI', 'Є' => 'YE', 'Ґ' => 'G',
+
+            // Vietnamese
+            'ạ' => 'a', 'ả' => 'a', 'ấ' => 'a', 'ầ' => 'a', 'ẩ' => 'a', 'ẫ' => 'a',
+            'ậ' => 'a', 'ắ' => 'a', 'ằ' => 'a', 'ẳ' => 'a', 'ẵ' => 'a', 'ặ' => 'a',
+            'ẹ' => 'e', 'ẻ' => 'e', 'ẽ' => 'e', 'ế' => 'e', 'ề' => 'e', 'ể' => 'e',
+            'ễ' => 'e', 'ệ' => 'e',
+            'ỉ' => 'i', 'ị' => 'i',
+            'ọ' => 'o', 'ỏ' => 'o', 'ố' => 'o', 'ồ' => 'o', 'ổ' => 'o', 'ỗ' => 'o',
+            'ộ' => 'o', 'ớ' => 'o', 'ờ' => 'o', 'ở' => 'o', 'ỡ' => 'o', 'ợ' => 'o',
+            'ơ' => 'o', 'Ơ' => 'O',
+            'ụ' => 'u', 'ủ' => 'u', 'ứ' => 'u', 'ừ' => 'u', 'ử' => 'u', 'ữ' => 'u',
+            'ự' => 'u', 'ư' => 'u', 'Ư' => 'U',
+            'ỳ' => 'y', 'ỵ' => 'y', 'ỷ' => 'y', 'ỹ' => 'y',
+            'đ' => 'd', 'Đ' => 'D',
+        ];
     }
 }
