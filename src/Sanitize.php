@@ -6,6 +6,23 @@ namespace ErlandMuchasaj\Sanitize;
 
 use Transliterator;
 
+
+/**
+ * How hyphens should be handled during sanitization.
+ */
+enum HyphenMode
+{
+    /** Replace hyphens with spaces: "tit-for-tat" → "tit for tat". */
+    case Replace;
+
+    /** Preserve hyphens as-is: "tit-for-tat" → "tit-for-tat". */
+    case Keep;
+
+    /** Strip hyphens, joining words: "tit-for-tat" → "titfortat". */
+    case Strip;
+}
+
+
 /**
  * Sanitize input strings for use in search queries.
  * 
@@ -72,10 +89,16 @@ final class Sanitize
         '\x{fd3f}\x{fdfc}-\x{fe6b}\x{feff}-\x{ff0f}\x{ff1a}-\x{ff20}\x{ff3b}-\x{ff40}'.
         '\x{ff5b}-\x{ff65}\x{ff70}\x{ff9e}\x{ff9f}\x{ffe0}-\x{fffd}';
 
+    /** Matches all hyphen/dash variants (Unicode general dashes + ASCII -). */
+    private const HYPHEN_PATTERN = '/[\x{2010}-\x{2015}\-]+/u';
+
     /**
      * Cached Transliterator instance for performance.
      */
     private static ?Transliterator $transliterator = null;
+
+    /** Cached accent map for the manual fallback. */
+    private static ?array $accentMap = null;
 
     /**
      * Prevent instantiation - this is a static utility class.
@@ -85,57 +108,65 @@ final class Sanitize
     }
 
     /**
-     * Sanitize a string for use in search queries.
+     * Sanitize a string for use in a single search query.
      *
-     * @param string $string      The input string to sanitize
-     * @param bool   $keepHyphens Whether to preserve hyphens (default: false)
-     * @param bool   $keepEmails  Whether to preserve email format (default: false)
+     * For compound hyphenated terms (e.g. "drag-and-drop"), prefer
+     * {@see searchVariants()} or {@see forFulltextBoolean()}.
+     *
+     * @param string $string      Input string
+     * @param bool   $keepHyphens If true, hyphens are preserved; if false they become spaces
+     * @param bool   $keepEmails  If true, dots/underscores/excluded chars are preserved
      */
     public static function sanitize(
         string $string = '',
         bool $keepHyphens = false,
         bool $keepEmails = false
     ): string {
+        $mode = $keepHyphens ? HyphenMode::Keep : HyphenMode::Replace;
+
+        return self::finalize(self::preprocess($string, $keepEmails), $mode);
+    }
+
+    /**
+     * Run the expensive normalization pipeline once.
+     * Output preserves hyphens for downstream variant generation.
+     */
+    private static function preprocess(string $string, bool $keepEmails): string
+    {
         $string = trim($string);
 
         if ($string === '') {
             return '';
         }
 
-        // Ensure valid UTF-8 encoding
         $string = self::ensureUtf8($string);
-
-        // Remove HTML tags
         $string = strip_tags($string);
-
-        // Decode HTML entities
         $string = html_entity_decode($string, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        // Transliterate accented characters to ASCII equivalents
         $string = self::transliterate($string);
-
-        // Convert to lowercase
         $string = mb_strtolower($string, 'UTF-8');
-
-        // Remove punctuation between numbers (e.g., "1,000" → "1000", "1.5" → "15")
         $string = self::removePunctuationBetweenNumbers($string);
 
-        // Handle special characters based on email preservation setting
         if (!$keepEmails) {
             $string = self::removeSearchExcludedCharacters($string);
-            // Replace dots and underscores with spaces (not remove!)
+            // Map dots/underscores to spaces (do not strip — preserves token boundaries).
             $string = str_replace(['.', '_'], ' ', $string);
         }
 
-        // Handle hyphens
-        if (!$keepHyphens) {
-            $string = self::normalizeHyphens($string);
-        }
+        return $string;
+    }
 
-        // Normalize whitespace to single spaces
-        $string = self::normalizeWhitespace($string);
+    /**
+     * Apply hyphen handling and collapse whitespace.
+     */
+    private static function finalize(string $string, HyphenMode $mode): string
+    {
+        $string = match ($mode) {
+            HyphenMode::Replace => (string) preg_replace(self::HYPHEN_PATTERN, ' ', $string),
+            HyphenMode::Strip   => (string) preg_replace(self::HYPHEN_PATTERN, '',  $string),
+            HyphenMode::Keep    => $string,
+        };
 
-        return trim($string);
+        return trim((string) preg_replace('/\s+/', ' ', $string));
     }
 
     /**
@@ -248,35 +279,15 @@ final class Sanitize
     }
 
     /**
-     * Normalize hyphens - replace with spaces except at word boundaries.
+     * Manual fallback when neither Transliterator nor iconv are available.
      */
-    private static function normalizeHyphens(string $string): string
+    private static function replaceAccentedChars(string $string): string
     {
-        // Replace all hyphens/dashes with spaces
-        return (string) preg_replace('/[\x{2010}-\x{2015}\-]+/u', ' ', $string);
-    }
-
-    /**
-     * Normalize multiple whitespace characters to single space.
-     */
-    private static function normalizeWhitespace(string $string): string
-    {
-        return (string) preg_replace('/\s+/', ' ', $string);
-    }
-
-    /**
-     * Manual fallback for replacing accented characters.
-     * Used when neither Transliterator nor iconv are available.
-     */
-    private static function replaceAccentedChars(string $str): string
-    {
-        static $map = null;
-
-        if ($map === null) {
-            $map = self::buildAccentMap();
+        if (self::$accentMap === null) {
+            self::$accentMap = self::buildAccentMap();
         }
 
-        return strtr($str, $map);
+        return strtr($string, self::$accentMap);
     }
 
     /**
@@ -370,4 +381,5 @@ final class Sanitize
             'đ' => 'd', 'Đ' => 'D',
         ];
     }
+    
 }
